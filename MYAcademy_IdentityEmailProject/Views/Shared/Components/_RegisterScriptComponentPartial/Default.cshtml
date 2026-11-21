@@ -1,4 +1,6 @@
-﻿<script>
+﻿<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
     /* ======================================================================
        MAILORA — REGISTER (yalnızca frontend doğrulama ve simülasyon)
        Gerçek uygulamada: AccountController.Register (POST)
@@ -234,51 +236,57 @@
 
     /* ---------- Gönderim ---------- */
     form.addEventListener('submit', e => {
-        e.preventDefault();
-        if (userCheck.state === 'checking') { setTimeout(() => form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit')), 650); return; }
 
         KEYS.forEach(k => touched.add(k));
+
         const results = KEYS.map(k => paint(k, { shake: true }));
         paintTerms(true);
+
         const firstBad = KEYS.find((k, i) => !results[i]);
 
         if (firstBad || !terms.checked) {
+            e.preventDefault();
+
             const target = firstBad ? $('#' + firstBad) : terms;
+
             target.focus({ preventScroll: true });
-            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            const n = results.filter(r => !r).length + (terms.checked ? 0 : 1);
-            toast('Formu kontrol edin', `${n} alanda düzeltme gerekiyor.`, 'error', 'bi-exclamation-circle');
+            target.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+
+            toast(
+                'Formu kontrol edin',
+                'Lütfen zorunlu alanları kontrol edin.',
+                'error',
+                'bi-exclamation-circle'
+            );
+
             return;
         }
 
         const btn = $('#submitBtn');
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-sm"></span><span class="lbl">Hesabınız oluşturuluyor…</span>';
 
-        // Simülasyon — şifre hiçbir yerde saklanmaz
-        const user = { firstName: val('firstName').trim(), email: val('email').trim() };
-        setTimeout(() => {
-            form.reset();
-            showSuccess(user);
-            toast('Hesabınız oluşturuldu! 🎉', 'Doğrulama e-postası gönderildi.', 'success', 'bi-check2-circle');
-        }, 1400);
+        btn.disabled = true;
+        btn.innerHTML =
+            '<span class="spinner-sm"></span><span class="lbl">Hesabınız oluşturuluyor…</span>';
     });
 
     function showSuccess(user) {
         const esc = s => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         $('#registerView').innerHTML = `
-            <div class="success-view">
-              <div class="success-ic"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M13 25l7 7 15-16"/></svg></div>
-              <h2>Hoş geldiniz, ${esc(user.firstName)}!</h2>
-              <p>Mailora hesabınız başarıyla oluşturuldu. <b>${esc(user.email)}</b> adresine bir doğrulama bağlantısı gönderdik.</p>
-              <ol class="success-steps">
-                <li><span>1</span> Gelen kutunuzdaki doğrulama e-postasını açın</li>
-                <li><span>2</span> “Hesabımı Doğrula” bağlantısına tıklayın</li>
-                <li><span>3</span> Giriş yaparak Mailora’yı kullanmaya başlayın</li>
-              </ol>
-              <button type="button" class="btn-primary-x" style="margin-top:0" data-login-link><span class="lbl">Giriş Yap</span><i class="bi bi-arrow-right"></i></button>
-              <button type="button" class="btn-ghost" style="width:100%;margin-top:10px" id="resendBtn"><i class="bi bi-arrow-repeat"></i> Doğrulama e-postasını tekrar gönder</button>
-            </div>`;
+                <div class="success-view">
+                  <div class="success-ic"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M13 25l7 7 15-16"/></svg></div>
+                  <h2>Hoş geldiniz, ${esc(user.firstName)}!</h2>
+                  <p>Mailora hesabınız başarıyla oluşturuldu. <b>${esc(user.email)}</b> adresine bir doğrulama bağlantısı gönderdik.</p>
+                  <ol class="success-steps">
+                    <li><span>1</span> Gelen kutunuzdaki doğrulama e-postasını açın</li>
+                    <li><span>2</span> “Hesabımı Doğrula” bağlantısına tıklayın</li>
+                    <li><span>3</span> Giriş yaparak Mailora’yı kullanmaya başlayın</li>
+                  </ol>
+                  <button type="button" class="btn-primary-x" style="margin-top:0" data-login-link><span class="lbl">Giriş Yap</span><i class="bi bi-arrow-right"></i></button>
+                  <button type="button" class="btn-ghost" style="width:100%;margin-top:10px" id="resendBtn"><i class="bi bi-arrow-repeat"></i> Doğrulama e-postasını tekrar gönder</button>
+                </div>`;
         $('[data-login-link]', $('#registerView')).addEventListener('click', () =>
             toast('Giriş sayfası', 'Login ekranı ayrı bir sayfa olarak hazırlanacak.', 'info', 'bi-box-arrow-in-right'));
         $('#resendBtn').addEventListener('click', e => {
@@ -298,3 +306,21 @@
     renderRules();
     updatePasswordUi();
 </script>
+
+@if (TempData["RegisterSuccess"] != null)
+{
+    <script>
+        Swal.fire({
+            title: 'Tebrikler!',
+            text: 'Kullanıcınız başarıyla oluşturuldu.',
+            icon: 'success',
+            confirmButtonText: 'Tamam',
+            confirmButtonColor: '#6366f1',
+            allowOutsideClick: false
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = '@Url.Action("SignIn", "LogIn")';
+            }
+        });
+    </script>
+}
