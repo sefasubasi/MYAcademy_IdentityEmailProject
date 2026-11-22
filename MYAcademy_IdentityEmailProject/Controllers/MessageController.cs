@@ -19,6 +19,7 @@ namespace MYAcademy_IdentityEmailProject.Controllers
             _userManager = userManager;
         }
 
+        [Authorize]
         public IActionResult Inbox()
         {
             var values = _context.Messages.ToList();

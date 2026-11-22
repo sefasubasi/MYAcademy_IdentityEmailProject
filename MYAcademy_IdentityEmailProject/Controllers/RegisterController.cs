@@ -41,7 +41,7 @@ namespace MYAcademy_IdentityEmailProject.Controllers
             {
                 MimeMessage mimeMessage = new MimeMessage();
 
-                MailboxAddress mailboxAddressFrom = new MailboxAddress("Mailora Yönetim Paneli", "projekursapi@gmail.com");
+                MailboxAddress mailboxAddressFrom = new MailboxAddress("Mailora Yönetim Paneli", "Mailora@gmail.com");
                 mimeMessage.From.Add(mailboxAddressFrom);
 
                 MailboxAddress mailboxAddressTo = new MailboxAddress("User", userRegisterViewModel.Email);
