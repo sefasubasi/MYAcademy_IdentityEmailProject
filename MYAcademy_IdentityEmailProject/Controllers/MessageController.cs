@@ -7,7 +7,7 @@ using MYAcademy_IdentityEmailProject.Entities;
 
 namespace MYAcademy_IdentityEmailProject.Controllers
 {
-    //[Authorize]
+    [Authorize]
     public class MessageController : Controller
     {
         private readonly EmailContext _context;
@@ -20,9 +20,20 @@ namespace MYAcademy_IdentityEmailProject.Controllers
         }
 
         [Authorize]
-        public IActionResult Inbox()
+        public async Task<IActionResult> Inbox()
         {
-            var values = _context.Messages.ToList();
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+            {
+                return RedirectToAction("SignIn", "Login");
+            }
+
+            var values = _context.Messages
+                .Where(x => x.ReceiverEmail == user.Email)
+                .OrderByDescending(x => x.SendDate)
+                .ToList();
+
             return View(values);
         }
         [HttpGet]
@@ -43,6 +54,34 @@ namespace MYAcademy_IdentityEmailProject.Controllers
             var values = _context.Messages.Where(x => x.SenderEmail == user.Email).OrderByDescending(x => x.SendDate).ToList();
 
             return View(values);
+        }
+        [HttpGet]
+        public async Task<IActionResult> Detail(int id)
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+                return RedirectToAction("SignIn", "Login");
+
+            var message = _context.Messages.FirstOrDefault(x =>
+                x.MessageId == id &&
+                (x.ReceiverEmail == user.Email || x.SenderEmail == user.Email));
+
+            if (message == null)
+                return NotFound();
+
+            if (message.ReceiverEmail == user.Email && !message.IsRead)
+            {
+                message.IsRead = true;
+                _context.SaveChanges();
+            }
+
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                return PartialView("Detail", message);
+            }
+
+            return View(message);
         }
     }
 }

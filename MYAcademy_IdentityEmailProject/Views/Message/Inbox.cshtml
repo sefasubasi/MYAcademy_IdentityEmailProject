@@ -104,7 +104,7 @@
             {
                 var snippet = Snippet(m.MessageDetail);
                 var search = $"{m.SenderEmail} {m.SenderEmail} {m.Subject} {snippet}".ToLower(Tr);
-                var detailUrl = Url.Action("Detail", "Inbox", new { id = m.MessageId }) ?? $"/Inbox/Detail/{m.MessageId}";
+                var detailUrl = Url.Action("Detail", "Message", new { id = m.MessageId });
 
                 <article class="msg-item @(m.IsRead ? "" : "unread")"
                          data-id="@m.MessageId"
@@ -171,8 +171,64 @@
 
 </section>
 
+<dialog id="messageModal" class="message-modal">
+    <div class="modal-header">
+        <h5>Mesaj Detayı</h5>
+        <button type="button" id="closeMessageModal"
+                aria-label="Kapat">
+            &times;
+        </button>
+    </div>
+
+    <div class="modal-body" id="messageModalBody">
+        <p>Mesaj yükleniyor...</p>
+    </div>
+</dialog>
+
+<style>
+    .message-modal {
+        width: min(700px, 92%);
+        max-height: 85vh;
+        border: none;
+        border-radius: 16px;
+        padding: 0;
+        box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    }
+
+        .message-modal::backdrop {
+            background: rgba(20, 20, 40, .55);
+            backdrop-filter: blur(3px);
+        }
+
+        .message-modal .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid #eee;
+        }
+
+            .message-modal .modal-header button {
+                border: 0;
+                background: transparent;
+                font-size: 28px;
+                cursor: pointer;
+            }
+
+        .message-modal .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+    .message-content {
+        overflow-wrap: anywhere;
+        line-height: 1.7;
+    }
+</style>
+
 @section Scripts {
     <script>
+
         /* ======================================================================
            GELEN KUTUSU — liste sunucudan gelir; filtreleme, arama, sayfalama,
            seçim ve yıldız/okundu işlemleri tarayıcıda yapılır.
@@ -383,10 +439,47 @@
                 }, 5200);
             }
 
-            function openRow(r) {
+            
+            const modal = document.getElementById('messageModal');
+            const modalBody = document.getElementById('messageModalBody');
+
+            async function openRow(r) {
                 state.selectedId = rowId(r);
-                if (r.dataset.href) location.href = r.dataset.href;
+                render();
+
+                modalBody.innerHTML = '<p>Mesaj yükleniyor...</p>';
+                modal.showModal();
+
+                try {
+                    const response = await fetch(r.dataset.href, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Mesaj yüklenemedi.');
+                    }
+
+                    modalBody.innerHTML = await response.text();
+
+                    // Mesaj okundu olarak işaretlendi.
+                    setUnread(r, false);
+                    render();
+
+                } catch (error) {
+                    modalBody.innerHTML =
+                        '<p>Mesaj açılırken bir hata oluştu.</p>';
+                }
             }
+
+            document.getElementById('closeMessageModal')
+                .addEventListener('click', () => modal.close());
+
+            modal.addEventListener('click', e => {
+                if (e.target === modal) modal.close();
+            });
+
 
             /* --- Arama (liste + navbar senkron) --- */
             const search = $('#listSearch');

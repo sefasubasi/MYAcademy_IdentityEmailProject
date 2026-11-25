@@ -26,6 +26,15 @@ namespace MYAcademy_IdentityEmailProject.Controllers
             _configuration = configuration;
 
         }
+        private void SetCodeExpiration(AppUser user)
+        {
+            ViewBag.CodeExpiration = user.ValidCodeExpiration.HasValue
+                ? DateTime.SpecifyKind(
+                    user.ValidCodeExpiration.Value,
+                    DateTimeKind.Utc
+                  ).ToString("o")
+                : null;
+        }
 
         public IActionResult SignIn()
         {
@@ -79,7 +88,9 @@ namespace MYAcademy_IdentityEmailProject.Controllers
         [HttpGet]
         public async Task<IActionResult> VerifyEmail()
         {
+
             var userId = HttpContext.Session.GetString("PendingUserId");
+
 
             if (string.IsNullOrEmpty(userId))
             {
@@ -91,6 +102,8 @@ namespace MYAcademy_IdentityEmailProject.Controllers
 
             if (user == null || user.EmailConfirmed)
                 return RedirectToAction(nameof(SignIn));
+
+            SetCodeExpiration(user);
 
             var model = new UserLoginViewModel
             {
@@ -115,6 +128,7 @@ namespace MYAcademy_IdentityEmailProject.Controllers
             }
 
             var user = await _userManager.FindByIdAsync(userId);
+            SetCodeExpiration(user);
 
             if (user == null || user.EmailConfirmed)
                 return RedirectToAction(nameof(SignIn));
@@ -172,6 +186,49 @@ namespace MYAcademy_IdentityEmailProject.Controllers
 
             return RedirectToAction("Inbox", "Message");
         }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> GenerateNewCode()
+        {
+            // Session üzerinden bekleyen kullanıcıyı bul.
+            var userId = HttpContext.Session.GetString("PendingUserId");
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                TempData["Error"] = "Oturumunuzun süresi doldu. Tekrar giriş yapın.";
+                return RedirectToAction(nameof(SignIn));
+            }
+
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user == null || user.EmailConfirmed)
+            {
+                HttpContext.Session.Remove("PendingUserId");
+                return RedirectToAction(nameof(SignIn));
+            }
+
+            // Yeni doğrulama kodu oluştur.
+            user.ValidCode = RandomNumberGenerator.GetInt32(100000, 1000000);
+
+            // Yeni kodun geçerlilik süresi.
+            user.ValidCodeExpiration = DateTime.UtcNow.AddMinutes(1);
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+            {
+                TempData["Error"] = "Yeni doğrulama kodu oluşturulamadı.";
+                return RedirectToAction(nameof(VerifyEmail));
+            }
+
+            // Yeni kodu e-posta ile gönder.
+            await SendVerificationEmail(user);
+
+            TempData["Success"] = "Yeni doğrulama kodunuz e-posta adresinize gönderildi.";
+
+            return RedirectToAction(nameof(VerifyEmail));
+        }
+        [HttpGet]
         private async Task SendVerificationEmail(AppUser user)
         {
             var senderName = _configuration["EmailSettings:SenderName"];
